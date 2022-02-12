@@ -4,7 +4,8 @@
 
 #include "glm/gtx/string_cast.hpp"
 
-#include "Material.h"
+#include "ColorMaterial.h"
+#include "3rdParty/stb/stb_image.h"
 
 namespace xe {
 
@@ -25,19 +26,22 @@ namespace xe {
         glBindBuffer(GL_UNIFORM_BUFFER, color_uniform_buffer_);
         glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::vec4), &color_[0]);
         glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::vec4), sizeof(GLuint), &use_map_Kd);
+    }
 
+    void ColorMaterial::unbind() {
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, color_uniform_buffer_);
     }
 
     GLuint ColorMaterial::get_texture() {
         return texture_;
     }
 
-    void ColorMaterial::set_texture(GLuint texture_) {
-        this->texture_ = texture_;
-    }
-
     GLuint ColorMaterial::get_texture_unit() {
         return texture_unit_;
+    }
+
+    void ColorMaterial::set_texture(GLuint texture_) {
+        this->texture_ = texture_;
     }
 
     void ColorMaterial::set_texture_unit(GLuint texture_unit_) {
@@ -57,11 +61,19 @@ namespace xe {
 
         shader_ = program;
 
+        uniform_map_Kd_location_ = glGetUniformLocation(shader_, "map_Kd");
+        if (uniform_map_Kd_location_ == -1) {
+            // spdlog::warn("Cannot get uniform {} location", "map_Kd");
+            std::cerr << "cannot get uniform " << std::endl;
+            exit(-1);
+        }
+
         glGenBuffers(1, &color_uniform_buffer_);
 
         glBindBuffer(GL_UNIFORM_BUFFER, color_uniform_buffer_);
-        glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::vec4), nullptr, GL_STATIC_DRAW);
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::vec4) + sizeof(GLuint), nullptr, GL_STATIC_DRAW);
         glBindBuffer(GL_UNIFORM_BUFFER, 0u);
+
 #if __APPLE__
         auto u_modifiers_index = glGetUniformBlockIndex(program, "Color");
         if (u_modifiers_index == -1) {
